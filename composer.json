@@ -1,0 +1,49 @@
+{
+    "name": "onstage2426/wp-hub-updater",
+    "type": "library",
+    "description": "WordPress plugin and theme updater powered by GitHub releases. Requires PHP 8.3+ and WordPress 6.6+. Includes a bundler (bin/wp-hub-updater) to copy and namespace-prefix the library into any plugin for conflict-free shipping.",
+    "keywords": [
+        "wordpress",
+        "github",
+        "updater",
+        "plugin-updater",
+        "theme-updater",
+        "auto-update",
+        "github-releases",
+        "rollback"
+    ],
+    "homepage": "https://github.com/onstage2426/wp-hub-updater",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Onstage2426",
+            "email": "70956213+Onstage2426@users.noreply.github.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=8.3"
+    },
+    "require-dev": {
+        "rector/rector": "^2.0",
+        "phpstan/phpstan": "^2.2",
+        "php-stubs/wordpress-stubs": "^7.0"
+    },
+    "bin": [
+        "bin/wp-hub-updater"
+    ],
+    "autoload": {
+        "psr-4": {
+            "WpHubUpdater\\": "src/"
+        }
+    },
+    "scripts": {
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "rector": "rector process",
+        "rector:dry": "rector process --dry-run",
+        "check": ["@rector:dry", "@analyse"]
+    },
+    "suggest": {
+        "wp-cli/wp-cli-bundle": "Enables `wp hu <slug> check|status|clear|enable-auto-updates|disable-auto-updates` commands for each configured updater"
+    }
+}

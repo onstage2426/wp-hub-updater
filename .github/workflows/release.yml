@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=1G
+
+      - name: Validate prefix script
+        run: |
+          mkdir -p /tmp/prefix-test
+          cd /tmp/prefix-test
+          php $GITHUB_WORKSPACE/bin/wp-hub-updater TestVendor src/lib
+
+          COUNT=$(find src/lib -name '*.php' | wc -l)
+          [ "$COUNT" -gt 0 ] || { echo "No files written by prefix script"; exit 1; }
+
+          grep -qr 'namespace TestVendor\\WpHubUpdater' src/lib/ \
+            || { echo "New namespace not found in output"; exit 1; }
+
+          grep -qr 'namespace WpHubUpdater' src/lib/ \
+            && { echo "Old namespace still present in output"; exit 1; } || true
+
+          grep -qr 'TestVendor\\TestVendor' src/lib/ \
+            && { echo "Double-prefix detected in output"; exit 1; } || true
+
+          echo "Prefix script OK — ${COUNT} files"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

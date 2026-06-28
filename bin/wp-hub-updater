@@ -1,0 +1,102 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+/**
+ * Copies the WpHubUpdater library source into your plugin with the namespace
+ * rewritten so multiple plugins can bundle this library without class collisions.
+ *
+ * Usage:   vendor/bin/wp-hub-updater <Prefix> [output-dir]
+ * Example: vendor/bin/wp-hub-updater MyPlugin
+ *
+ * Defaults to src/WpHubUpdater/. If your project already autoloads
+ * "MyPlugin\\": "src/", no extra autoload entry is needed.
+ *
+ * Pass a custom output dir if your project structure differs:
+ *   vendor/bin/wp-hub-updater MyPlugin some/other/path
+ */
+
+if (PHP_SAPI !== "cli") {
+    fwrite(STDERR, "This script must be run from the command line.\n");
+    exit(1);
+}
+
+$prefix = trim($argv[1] ?? "");
+$outputDir = rtrim(trim($argv[2] ?? "src/WpHubUpdater"), "/\\");
+
+if ($prefix === "") {
+    fwrite(
+        STDERR,
+        "Usage:    vendor/bin/wp-hub-updater <Prefix> [output-dir]\n",
+    );
+    fwrite(STDERR, "Example:  vendor/bin/wp-hub-updater MyPlugin\n");
+    exit(1);
+}
+
+$prefix = rtrim($prefix, "\\");
+$oldNs = "WpHubUpdater";
+$newNs = $prefix . "\\" . $oldNs; // e.g. MyPlugin\WpHubUpdater
+
+$srcDir = dirname(__DIR__) . "/src";
+$destDir = getcwd() . DIRECTORY_SEPARATOR . $outputDir;
+
+if (!is_dir($srcDir)) {
+    fwrite(STDERR, "Source directory not found: {$srcDir}\n");
+    exit(1);
+}
+
+// Wipe and recreate the destination so re-runs are always clean.
+if (is_dir($destDir)) {
+    $existing = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($destDir, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST,
+    );
+    foreach ($existing as $item) {
+        $item->isDir()
+            ? rmdir($item->getPathname())
+            : unlink($item->getPathname());
+    }
+    rmdir($destDir);
+}
+
+mkdir($destDir, 0755, true);
+
+// Single-pass regex so no replacement can match the output of a previous one.
+// Matches the bare class name at a word boundary, but only when followed by
+// a namespace separator (\) or statement end (;) — the only two contexts it
+// ever appears in across the codebase.
+$pattern = "/\b" . preg_quote($oldNs, "/") . "(?=[\\\\;])/";
+$replacement = str_replace("\\", "\\\\", $newNs); // escape \ for preg_replace
+
+$count = 0;
+$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcDir));
+
+foreach ($files as $file) {
+    if (!$file->isFile() || $file->getExtension() !== "php") {
+        continue;
+    }
+
+    $relative = ltrim(
+        substr($file->getPathname(), strlen($srcDir)),
+        DIRECTORY_SEPARATOR,
+    );
+    $dest = $destDir . DIRECTORY_SEPARATOR . $relative;
+    $destParent = dirname($dest);
+
+    if (!is_dir($destParent)) {
+        mkdir($destParent, 0755, true);
+    }
+
+    $contents = file_get_contents($file->getPathname());
+    if ($contents === false) {
+        continue;
+    }
+    file_put_contents($dest, preg_replace($pattern, $replacement, $contents));
+    $count++;
+}
+
+$psr4Key = str_replace("\\", "\\\\", $newNs) . "\\\\";
+$psr4Value = $outputDir . "/";
+
+echo "Prefixed {$count} file(s) → {$outputDir}/\n";
+

@@ -1,0 +1,24 @@
+parameters:
+    level: 7
+    paths:
+        - src
+        - bin/wp-hub-updater
+    bootstrapFiles:
+        - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+        - phpstan-bootstrap.php
+    # These WP constants are always defined at runtime but their values vary
+    dynamicConstantNames:
+        - ABSPATH
+        - WP_DEBUG
+        - WP_PLUGIN_DIR
+        - WPMU_PLUGIN_DIR
+        - DOING_CRON
+        - WP_CLI
+        - WP_INSTALLING
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # WP_Upgrader_Skin::feedback() is a real method but the stubs may not cover it
+        - '#Call to an undefined method WP_Upgrader_Skin::feedback\(\)#'
+        # WP_CLI classes are only present at runtime when WP-CLI is active; no stubs installed
+        - '#unknown class WP_CLI#'
