@@ -37,6 +37,7 @@ abstract class AbstractUpdater
 
     private bool $metadataHostResolved = false;
     private string|null $cachedMetadataHost = null;
+    private string|null $cachedRepositoryPath = null;
     private ?string $accessToken = null;
     private string $textDomain = '';
 
@@ -960,6 +961,21 @@ abstract class AbstractUpdater
             return $args;
         }
         if (!in_array($host, ["github.com", "api.github.com"], true)) {
+            return $args;
+        }
+        if ($this->cachedRepositoryPath === null) {
+            $this->cachedRepositoryPath = $this->api->getRepositoryPath();
+        }
+        $path = wp_parse_url($url, PHP_URL_PATH);
+        if (!is_string($path)) {
+            return $args;
+        }
+        $repoPath = $this->cachedRepositoryPath;
+        if (
+            $path !== "/repos/{$repoPath}"
+            && !str_starts_with($path, "/repos/{$repoPath}/")
+            && !str_starts_with($path, "/{$repoPath}/")
+        ) {
             return $args;
         }
         $args["headers"] ??= [];

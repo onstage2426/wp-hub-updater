@@ -94,6 +94,12 @@ final class GitHubClient
         return $this->repositoryUrl;
     }
 
+    /** Returns the "owner/repo" path parsed from the repository URL. */
+    public function getRepositoryPath(): string
+    {
+        return $this->userName . "/" . $this->repositoryName;
+    }
+
     /**
      * Runs the ordered detection strategies and returns the first successful
      * reference object. The strategy list can be customised via a WP filter
